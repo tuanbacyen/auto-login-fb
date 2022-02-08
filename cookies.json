@@ -1,0 +1,62 @@
+[
+  {
+    "name": "fr",
+    "value": "0uz3O25Q93xcePIBu.AWXBogb2n1J7gNEBeDXjcyIeD8U.Bh7Ow-.zb.AAA.0.0.Bh7OxR.AWVM6TCEBLw",
+    "path": "/",
+    "domain": ".facebook.com",
+    "expires": "2022-04-23T05:49:00+00:00",
+    "same_site": "None",
+    "http_only": true,
+    "secure": true
+  },
+  {
+    "name": "xs",
+    "value": "18%3AQ9l85ht4_oyZNA%3A2%3A1642916945%3A-1%3A6383",
+    "path": "/",
+    "domain": ".facebook.com",
+    "expires": "2023-01-23T05:49:04+00:00",
+    "same_site": "None",
+    "http_only": true,
+    "secure": true
+  },
+  {
+    "name": "datr",
+    "value": "PuzsYfbIyyKcB2T8Idg6Uozw",
+    "path": "/",
+    "domain": ".facebook.com",
+    "expires": "2024-01-23T05:48:48+00:00",
+    "same_site": "None",
+    "http_only": true,
+    "secure": true
+  },
+  {
+    "name": "c_user",
+    "value": "100014051555911",
+    "path": "/",
+    "domain": ".facebook.com",
+    "expires": "2023-01-23T05:49:04+00:00",
+    "same_site": "None",
+    "http_only": false,
+    "secure": true
+  },
+  {
+    "name": "wd",
+    "value": "1848x980",
+    "path": "/",
+    "domain": ".facebook.com",
+    "expires": "2022-01-30T05:49:04+00:00",
+    "same_site": "Lax",
+    "http_only": false,
+    "secure": true
+  },
+  {
+    "name": "sb",
+    "value": "PuzsYYj9FxzIWBX9pNmi8Q6j",
+    "path": "/",
+    "domain": ".facebook.com",
+    "expires": "2024-01-23T05:49:07+00:00",
+    "same_site": "None",
+    "http_only": true,
+    "secure": true
+  }
+]
