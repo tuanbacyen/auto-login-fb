@@ -1,4 +1,4 @@
-# gem install selenium-webdriver chromedriver-helper
+# gem install selenium-webdriver chromedriver-helper pry httparty
 require "selenium-webdriver"
 require "chromedriver-helper"
 require "json"
@@ -74,7 +74,7 @@ def crawl_data driver, url
   HTTParty.post(
     "https://fb-crawl-order.herokuapp.com/api/v1/posts",
     body: { datas: posts }.to_json,
-    headers: { "Content-Type" => "application/json", "Authorization" => "bearer 123321"}
+    headers: { "Content-Type" => "application/json", "Authorization" => "bearer 123456789009876543211"}
   )
 end
 
