@@ -6,12 +6,13 @@ x = HTTParty.get(
   headers: { "Content-Type" => "application/json", "Authorization" => "bearer 123456789009876543211"}
 )
 
-datas = JSON.parse(x.body)["data"]
-datas.map do |data|
-  attributes = data["attributes"]
-  {
-    username: attributes["account_fb"]["username"],
-    password: attributes["account_fb"]["pwd"],
-    group_url: attributes["group"]["group_url"]
+datas = []
+JSON.parse(x.body)["datas"].each do |data|
+  datas << {
+    username: data[1]["username"],
+    password: data[1]["pwd"],
+    groups: data[1]["groups"].map{ |i| i["group_url"] }
   }
 end
+
+datas
