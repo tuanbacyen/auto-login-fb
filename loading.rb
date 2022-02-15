@@ -18,7 +18,7 @@ options = Selenium::WebDriver::Chrome::Options.new(
 options.add_argument("--no-sandbox")
 options.add_argument("--window-size=1920,1200")
 options.add_argument("--start-maximized")
-# options.add_argument("--headless")
+options.add_argument("--headless")
 options.add_argument('--disable-blink-features=AutomationControlled')
 options.add_argument("--blink-settings=imagesEnabled=false")
 options.add_argument("--disable-dev-shm-usage")
@@ -46,10 +46,11 @@ def main driver
 
 
   loop do
-    sleep rand(5..10)
+    sleep rand(3..6)
     crawl_data driver, "https://m.facebook.com/groups/710752063666767?sorting_setting=CHRONOLOGICAL"
   end
-rescue
+rescue => e
+  puts e
 ensure
   puts "close chromedriver"
   driver.quit
@@ -69,7 +70,7 @@ def crawl_data driver, url
     }
   end
 
-  puts posts.count
+  puts Time.now.to_i
 
   HTTParty.post(
     "https://fb-crawl-order.herokuapp.com/api/v1/posts",
