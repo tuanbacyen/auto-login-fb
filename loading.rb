@@ -47,7 +47,7 @@ def main driver
 
   loop do
     sleep rand(3..5)
-    crawl_data driver, "https://m.facebook.com/groups/710752063666767?sorting_setting=CHRONOLOGICAL"
+    crawl_data driver, "https://m.facebook.com/groups/812617762975572?sorting_setting=CHRONOLOGICAL"
   end
 rescue => e
   puts e
@@ -59,7 +59,7 @@ end
 def crawl_data driver, url
   driver.navigate.to url
   sleep 3
-  list_story = driver.find_elements(:class, "story_body_container").first(10)
+  list_story = driver.find_elements(:class, "story_body_container").first(11)[1..-1]
   list_story_has_phone = list_story.select{|story| !/09|03|07|08|05/.match(story.find_element(:tag_name, "p").text).nil?}
   posts = list_story_has_phone[0...10].map do |post|
     post_id = post.find_elements(:tag_name, "a").select{|i| i.attribute('href').include?("permalink")}.first.attribute('href').split("/")[6]
