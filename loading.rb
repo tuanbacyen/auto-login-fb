@@ -18,9 +18,9 @@ options = Selenium::WebDriver::Chrome::Options.new(
 options.add_argument("--no-sandbox")
 options.add_argument("--window-size=1920,1200")
 options.add_argument("--start-maximized")
-options.add_argument("--headless")
+# options.add_argument("--headless")
 options.add_argument('--disable-blink-features=AutomationControlled')
-options.add_argument("--blink-settings=imagesEnabled=false")
+# options.add_argument("--blink-settings=imagesEnabled=false")
 options.add_argument("--disable-dev-shm-usage")
 options.add_argument("--disable-gpu")
 options.add_argument("disable-infobars")
@@ -59,16 +59,30 @@ end
 def crawl_data driver, url
   driver.navigate.to url
   sleep 3
-  list_story = driver.find_elements(:class, "story_body_container").first(11)[1..-1]
-  list_story_has_phone = list_story.select{|story| !/09|03|07|08|05/.match(story.find_element(:tag_name, "p").text).nil?}
-  posts = list_story_has_phone[0...10].map do |post|
-    post_id = post.find_elements(:tag_name, "a").select{|i| i.attribute('href').include?("permalink")}.first.attribute('href').split("/")[6]
-    {
-      username: post.find_element(:tag_name, "strong").text,
-      content: post.find_element(:tag_name, "p").text,
-      post_id: "710752063666767/#{post_id}"
-    }
-  end
+  list_story = driver.find_elements(:class, "story_body_container").first(20)
+  posts = list_story.map do |story|
+    text = story.find_elements(:tag_name, "p")
+    text = story.find_elements(:tag_name, "span") if text.empty?
+    if !/09|03|07|08|05/.match(text.last.text).nil?
+      post_id = story.find_elements(:tag_name, "a").select{|i| i.attribute('href').include?("permalink")}.first.attribute('href').split("/")[6]
+      {
+        username: story.find_element(:tag_name, "strong").text,
+        content: text.last.text,
+        post_id: "710752063666767/#{post_id}"
+      }
+    else
+      nil
+    end
+  end.compact
+
+  # posts = list_story_has_phone[0...10].map do |post|
+  #   post_id = post.find_elements(:tag_name, "a").select{|i| i.attribute('href').include?("permalink")}.first.attribute('href').split("/")[6]
+  #   {
+  #     username: post.find_element(:tag_name, "strong").text,
+  #     content: post.find_element(:tag_name, "p").text,
+  #     post_id: "710752063666767/#{post_id}"
+  #   }
+  # end
 
   puts Time.now.to_i
 
