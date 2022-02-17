@@ -59,16 +59,18 @@ end
 def crawl_data driver, url
   driver.navigate.to url
   sleep 3
-  list_story = driver.find_elements(:class, "story_body_container").first(20)
+  list_story = driver.find_elements(:class, "story_body_container").first(10)
   posts = list_story.map do |story|
     text = story.find_elements(:tag_name, "p")
     text = story.find_elements(:tag_name, "span") if text.empty?
     if !/09|03|07|08|05/.match(text.last.text).nil?
+      fb_user_post_id = story.find_element(:tag_name, "header").find_elements(:tag_name, "div").map{|i| i.attribute("data-sigil")}.compact.select{|i| i.include?("feed_story_ring")}.first.gsub!("feed_story_ring", "")
       post_id = story.find_elements(:tag_name, "a").select{|i| i.attribute('href').include?("permalink")}.first.attribute('href').split("/")[6]
       {
         username: story.find_element(:tag_name, "strong").text,
         content: text.last.text,
-        post_id: "710752063666767/#{post_id}"
+        post_id: "812617762975572/#{post_id}",
+        fb_user_post_id: fb_user_post_id
       }
     else
       nil
@@ -86,8 +88,11 @@ def crawl_data driver, url
 
   puts Time.now.to_i
 
+  host = "https://fb-crawl-order.herokuapp.com"
+  # host = "http://localhost:3000"
+
   HTTParty.post(
-    "https://fb-crawl-order.herokuapp.com/api/v1/posts",
+    "#{host}/api/v1/posts",
     body: { datas: posts }.to_json,
     headers: { "Content-Type" => "application/json", "Authorization" => "bearer 123456789009876543211"}
   )
