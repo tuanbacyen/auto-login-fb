@@ -35,7 +35,7 @@ def start driver, account, pwd, group_ids
     driver.navigate.to "https://www.facebook.com/"
     sleep 5
 
-    cookies = JSON.parse(File.read("cookies.json")).map{|i| i.transform_keys(&:to_sym)}
+    cookies = JSON.parse(File.read("#{account.split("@").first}.json")).map{|i| i.transform_keys(&:to_sym)}
     cookies.each do |cookie|
       cookie[:expires] = Time.now.to_i + 90*86400
       driver.manage.add_cookie(cookie)
@@ -88,14 +88,14 @@ end
 
 def crawl_data driver, group_id
   driver.navigate.refresh
-  sleep 3
+  sleep 5
   list_story = driver.find_elements(:class, "story_body_container").first(10)
   posts = list_story.map do |story|
     text = story.find_elements(:tag_name, "p")
     text = story.find_elements(:tag_name, "span") if text.empty?
     if !/09|03|07|08|05/.match(text.last.text).nil?
-      fb_user_post_id = story.find_element(:tag_name, "header").find_elements(:tag_name, "div").map{|i| i.attribute("data-sigil")}.compact.select{|i| i.include?("feed_story_ring")}.first.gsub!("feed_story_ring", "")
-      post_id = story.find_elements(:tag_name, "a").select{|i| i.attribute('href').include?("permalink")}.first.attribute('href').split("/")[6]
+      fb_user_post_id = story.find_element(:tag_name, "header").find_elements(:tag_name, "div").map{|i| i.attribute("data-sigil")}.compact.select{|i| i&.include?("feed_story_ring")}.first.gsub!("feed_story_ring", "")
+      post_id = story.find_elements(:tag_name, "a").select{|i| i.attribute('href')&.include?("permalink")}.first.attribute('href').split("/")[6]
       {
         username: story.find_element(:tag_name, "strong").text,
         content: text.last.text,
@@ -150,9 +150,9 @@ def main
     }
   end
 
-  datas.each_with_index do |data, i|
+  [datas[0]].each_with_index do |data, i|
     Process.fork do
-      puts "open chromedriver with account"
+      puts "open chromedriver with account #{data[:username]}"
       driver = Selenium::WebDriver.for :chrome, options: @options
       start(driver, data[:username], data[:password], data[:groups])
     end
