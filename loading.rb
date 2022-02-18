@@ -9,56 +9,85 @@ require "httparty"
 # https://chromedriver.storage.googleapis.com/index.html
 Chromedriver.set_version "97.0.4692.71"
 
-options = Selenium::WebDriver::Chrome::Options.new(
+@options = Selenium::WebDriver::Chrome::Options.new(
   options: {
     "excludeSwitches": ["enable-automation"],
     "detach": true
   }
 )
-options.add_argument("--no-sandbox")
-options.add_argument("--window-size=1920,1200")
-options.add_argument("--start-maximized")
-options.add_argument("--headless")
-options.add_argument('--disable-blink-features=AutomationControlled')
-options.add_argument("--blink-settings=imagesEnabled=false")
-options.add_argument("--disable-dev-shm-usage")
-options.add_argument("--disable-gpu")
-options.add_argument("disable-infobars")
-options.add_argument('--disable-application-cache')
-options.add_argument('--disable-notifications')
+@options.add_argument("--no-sandbox")
+@options.add_argument("--window-size=1920,1200")
+@options.add_argument("--start-maximized")
+@options.add_argument("--headless")
+@options.add_argument('--disable-blink-features=AutomationControlled')
+@options.add_argument("--blink-settings=imagesEnabled=false")
+@options.add_argument("--disable-dev-shm-usage")
+@options.add_argument("--disable-gpu")
+@options.add_argument("disable-infobars")
+@options.add_argument('--disable-application-cache')
+@options.add_argument('--disable-notifications')
 
-puts "open chromedriver"
-driver = Selenium::WebDriver.for :chrome, options: options
+# puts "open chromedriver"
+# driver = Selenium::WebDriver.for :chrome, @options: @options
 
-def main driver
-  driver.navigate.to "https://www.facebook.com/"
-  sleep 5
+def start driver, account, pwd, group_ids
+  if File.exist?("#{account.split("@").first}.json")
+    driver.navigate.to "https://www.facebook.com/"
+    sleep 5
 
-  cookies = JSON.parse(File.read("cookies.json")).map{|i| i.transform_keys(&:to_sym)}
-  cookies.each do |cookie|
-    cookie[:expires] = Time.now.to_i + 90*86400
-    driver.manage.add_cookie(cookie)
+    cookies = JSON.parse(File.read("cookies.json")).map{|i| i.transform_keys(&:to_sym)}
+    cookies.each do |cookie|
+      cookie[:expires] = Time.now.to_i + 90*86400
+      driver.manage.add_cookie(cookie)
+    end
+    sleep 2
+  else
+    login(driver, account, pwd)
   end
 
-  sleep 5
   driver.navigate.to "https://www.facebook.com/"
   sleep 5
 
+  urls = group_ids.map do |group_id|
+    "https://m.facebook.com/groups/#{group_id}?sorting_setting=CHRONOLOGICAL"
+  end
+
+  open_chrome_tab(driver, urls)
 
   loop do
     sleep rand(3..5)
-    crawl_data driver, "https://m.facebook.com/groups/nhomshipnhieudonkhongauto?sorting_setting=CHRONOLOGICAL"
-    # crawl_data driver, "https://m.facebook.com/groups/812617762975572?sorting_setting=CHRONOLOGICAL"
+    urls.each_with_index do |url, i|
+      puts "browser #{i + 1} | thread_ID: #{Process.pid} | #{Time.now.to_i}"
+      driver.switch_to.window(driver.window_handles[i])
+      crawl_data(driver, group_ids[i])
+    end
   end
 rescue => e
   puts e
+  File.open("log_#{Time.now.to_i}.txt", 'w') { |file| file.write(e.backtrace.join("\n")) }
 ensure
+  # binding.pry
   puts "close chromedriver"
   driver.quit
 end
 
-def crawl_data driver, url
-  driver.navigate.to url
+def open_chrome_tab driver, urls
+  driver.navigate.to urls.first
+
+  urls[1..-1].each do |url|
+    driver.execute_script("window.open();")
+    sleep 2
+    driver.switch_to.window(driver.window_handles.last)
+    sleep 2
+    driver.navigate.to url
+    sleep 3
+  end
+
+  driver.switch_to.window(driver.window_handles.first)
+end
+
+def crawl_data driver, group_id
+  driver.navigate.refresh
   sleep 3
   list_story = driver.find_elements(:class, "story_body_container").first(10)
   posts = list_story.map do |story|
@@ -70,7 +99,7 @@ def crawl_data driver, url
       {
         username: story.find_element(:tag_name, "strong").text,
         content: text.last.text,
-        post_id: "812617762975572/#{post_id}",
+        post_id: "#{group_id}/#{post_id}",
         fb_user_post_id: fb_user_post_id
       }
     else
@@ -78,19 +107,11 @@ def crawl_data driver, url
     end
   end.compact
 
-  # posts = list_story_has_phone[0...10].map do |post|
-  #   post_id = post.find_elements(:tag_name, "a").select{|i| i.attribute('href').include?("permalink")}.first.attribute('href').split("/")[6]
-  #   {
-  #     username: post.find_element(:tag_name, "strong").text,
-  #     content: post.find_element(:tag_name, "p").text,
-  #     post_id: "710752063666767/#{post_id}"
-  #   }
-  # end
+  post_data(posts)
+end
 
-  puts Time.now.to_i
-
+def post_data posts
   host = "https://fb-crawl-order.herokuapp.com"
-  # host = "http://localhost:3000"
 
   HTTParty.post(
     "#{host}/api/v1/posts",
@@ -99,4 +120,45 @@ def crawl_data driver, url
   )
 end
 
-main(driver)
+def login driver, account, pwd
+  driver.navigate.to "https://www.facebook.com/"
+  sleep 5
+  driver.find_element(:id, 'email').send_keys(account)
+  sleep 3
+  driver.find_element(:id, 'pass').send_keys(pwd)
+  sleep 3
+  driver.action.send_keys(:enter).perform
+  sleep 10
+
+  cookie = driver.manage.all_cookies
+  File.open("#{account.split("@").first}.json","w") { |f| f.write(cookie.to_json) }
+  sleep 5
+end
+
+def main
+  x = HTTParty.get(
+    "https://fb-crawl-order.herokuapp.com/api/v1/accounts/list",
+    headers: { "Content-Type" => "application/json", "Authorization" => "bearer 123456789009876543211"}
+  )
+
+  datas = []
+  JSON.parse(x.body)["datas"].each do |data|
+    datas << {
+      username: data[1]["username"],
+      password: data[1]["pwd"],
+      groups: data[1]["groups"].map{ |i| i["group_url"] }
+    }
+  end
+
+  datas.each_with_index do |data, i|
+    Process.fork do
+      puts "open chromedriver with account"
+      driver = Selenium::WebDriver.for :chrome, options: @options
+      start(driver, data[:username], data[:password], data[:groups])
+    end
+  end
+end
+
+
+main()
+# pkill chrome

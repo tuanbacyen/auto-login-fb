@@ -2,7 +2,7 @@ require "httparty"
 require "json"
 
 x = HTTParty.get(
-  "http://localhost:3000/api/v1/accounts/list",
+  "https://fb-crawl-order.herokuapp.com/api/v1/accounts/list",
   headers: { "Content-Type" => "application/json", "Authorization" => "bearer 123456789009876543211"}
 )
 
@@ -15,4 +15,10 @@ JSON.parse(x.body)["datas"].each do |data|
   }
 end
 
-datas
+datas.each_with_index do |data, i|
+  fork do
+    puts "open chromedriver with account"
+    driver = Selenium::WebDriver.for :chrome, options: @options
+    start(driver, data[:username], data[:password], data[:groups])
+  end
+end
