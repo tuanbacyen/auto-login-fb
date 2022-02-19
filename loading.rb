@@ -28,17 +28,17 @@ Chromedriver.set_version "97.0.4692.71"
 @options.add_argument('--disable-application-cache')
 @options.add_argument('--disable-notifications')
 
-@log = Logger.new("log_#{Time.now.to_i}.txt")
+@log = Logger.new("logs/log_#{Time.now.to_i}.txt")
 @log.level = Logger::INFO
 
 # driver = Selenium::WebDriver.for :chrome, @options: @options
 
 def start driver, account, pwd, group_ids
-  if File.exist?("#{account.split("@").first}.json")
+  if File.exist?("cookies/#{account.split("@").first}.json")
     driver.navigate.to "https://www.facebook.com/"
     sleep 5
 
-    cookies = JSON.parse(File.read("#{account.split("@").first}.json")).map{|i| i.transform_keys(&:to_sym)}
+    cookies = JSON.parse(File.read("cookies/#{account.split("@").first}.json")).map{|i| i.transform_keys(&:to_sym)}
     cookies.each do |cookie|
       cookie[:expires] = Time.now.to_i + 90*86400
       driver.manage.add_cookie(cookie)
@@ -134,7 +134,7 @@ def login driver, account, pwd
   sleep 10
 
   cookie = driver.manage.all_cookies
-  File.open("#{account.split("@").first}.json","w") { |f| f.write(cookie.to_json) }
+  File.open("cookies/#{account.split("@").first}.json","w") { |f| f.write(cookie.to_json) }
   sleep 5
 end
 
