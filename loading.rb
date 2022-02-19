@@ -5,6 +5,7 @@ require "json"
 require "date"
 require "pry"
 require "httparty"
+require "logger"
 
 # https://chromedriver.storage.googleapis.com/index.html
 Chromedriver.set_version "97.0.4692.71"
@@ -27,7 +28,9 @@ Chromedriver.set_version "97.0.4692.71"
 @options.add_argument('--disable-application-cache')
 @options.add_argument('--disable-notifications')
 
-# puts "open chromedriver"
+@log = Logger.new("log_#{Time.now.to_i}.txt")
+@log.level = Logger::INFO
+
 # driver = Selenium::WebDriver.for :chrome, @options: @options
 
 def start driver, account, pwd, group_ids
@@ -57,17 +60,17 @@ def start driver, account, pwd, group_ids
   loop do
     sleep rand(3..5)
     urls.each_with_index do |url, i|
-      puts "browser #{i + 1} | thread_ID: #{Process.pid} | #{Time.now.to_i}"
+      @log.info "browser #{i + 1} | thread_ID: #{Process.pid} | #{Time.now.to_i}"
       driver.switch_to.window(driver.window_handles[i])
       crawl_data(driver, group_ids[i])
     end
   end
 rescue => e
-  puts e
+  @log.error e
   File.open("log_#{Time.now.to_i}.txt", 'w') { |file| file.write(e.backtrace.join("\n")) }
 ensure
   # binding.pry
-  puts "close chromedriver"
+  @log.info "close chromedriver"
   driver.quit
 end
 
@@ -150,9 +153,9 @@ def main
     }
   end
 
-  [datas[0]].each_with_index do |data, i|
+  datas.each_with_index do |data, i|
     Process.fork do
-      puts "open chromedriver with account #{data[:username]}"
+      @log.info "open chromedriver with account #{data[:username]}"
       driver = Selenium::WebDriver.for :chrome, options: @options
       start(driver, data[:username], data[:password], data[:groups])
     end
