@@ -60,14 +60,13 @@ def start driver, account, pwd, group_ids
   loop do
     sleep rand(3..5)
     urls.each_with_index do |url, i|
-      @log.info "browser #{i + 1} | thread_ID: #{Process.pid} | #{Time.now.to_i}"
+      @log.info "Account: #{account} | Browser #{i + 1} | Thread_ID: #{Process.pid} | #{Time.now.to_i}"
       driver.switch_to.window(driver.window_handles[i])
       crawl_data(driver, group_ids[i])
     end
   end
 rescue => e
   @log.error e
-  File.open("log_#{Time.now.to_i}.txt", 'w') { |file| file.write(e.backtrace.join("\n")) }
 ensure
   # binding.pry
   @log.info "close chromedriver"
