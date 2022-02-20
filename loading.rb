@@ -1,4 +1,4 @@
-# gem install selenium-webdriver chromedriver-helper pry httparty
+# gem install selenium-webdriver chromedriver-helper httparty logger webdriver pry
 require "selenium-webdriver"
 require "chromedriver-helper"
 require "json"
@@ -31,6 +31,11 @@ Chromedriver.set_version "97.0.4692.71"
 @log = Logger.new("logs/log_#{Time.now.to_i}.txt")
 @log.level = Logger::INFO
 
+# @host = "https://fb-crawl-order.herokuapp.com"
+@host = "http://localhost:3000"
+@new_crawl = false
+
+
 # driver = Selenium::WebDriver.for :chrome, @options: @options
 
 def start driver, account, pwd, group_ids
@@ -56,21 +61,36 @@ def start driver, account, pwd, group_ids
   end
 
   open_chrome_tab(driver, urls)
+  send_account_running(account)
 
   loop do
     sleep rand(3..5)
+    break if @new_crawl
     urls.each_with_index do |url, i|
       @log.info "Account: #{account} | Browser #{i + 1} | Thread_ID: #{Process.pid} | #{Time.now.to_i}"
       driver.switch_to.window(driver.window_handles[i])
-      crawl_data(driver, group_ids[i])
+      driver.navigate.refresh
+      sleep 5
+      if driver.current_url.include?("checkpoint")
+        sleep 2
+        send_account_block(account)
+        sleep 2
+        @new_crawl = true
+      else
+        crawl_data(driver, group_ids[i], account)
+      end
     end
   end
 rescue => e
   @log.error e
 ensure
-  # binding.pry
   @log.info "close chromedriver"
   driver.quit
+  if @new_crawl
+    @log.info "close chromedriver"
+    @new_crawl = false
+    main()
+  end
 end
 
 def open_chrome_tab driver, urls
@@ -88,9 +108,7 @@ def open_chrome_tab driver, urls
   driver.switch_to.window(driver.window_handles.first)
 end
 
-def crawl_data driver, group_id
-  driver.navigate.refresh
-  sleep 5
+def crawl_data driver, group_id, account
   list_story = driver.find_elements(:class, "story_body_container").first(10)
   posts = list_story.map do |story|
     text = story.find_elements(:tag_name, "p")
@@ -108,18 +126,35 @@ def crawl_data driver, group_id
       nil
     end
   end.compact
+  @log.info posts.to_s
 
-  post_data(posts)
+  post_data(posts, group_id, account)
 end
 
-def post_data posts
-  host = "https://fb-crawl-order.herokuapp.com"
-
+def post_data posts, group_id, account_crawl
   HTTParty.post(
-    "#{host}/api/v1/posts",
-    body: { datas: posts }.to_json,
+    "#{@host}/api/v1/posts",
+    body: { datas: posts, group_id: group_id, account_crawl: account_crawl}.to_json,
     headers: { "Content-Type" => "application/json", "Authorization" => "bearer 123456789009876543211"}
   )
+end
+
+def send_account_block account
+  HTTParty.post(
+    "#{@host}/api/v1/accounts/account_block",
+    body: { account: account }.to_json,
+    headers: { "Content-Type" => "application/json", "Authorization" => "bearer 123456789009876543211"}
+  )
+  @log.error "Block account #{account}"
+end
+
+def send_account_running account
+  HTTParty.post(
+    "#{@host}/api/v1/accounts/account_run",
+    body: { account: account }.to_json,
+    headers: { "Content-Type" => "application/json", "Authorization" => "bearer 123456789009876543211"}
+  )
+  @log.info "Account #{account} Running"
 end
 
 def login driver, account, pwd
@@ -138,8 +173,9 @@ def login driver, account, pwd
 end
 
 def main
+  sleep 5
   x = HTTParty.get(
-    "https://fb-crawl-order.herokuapp.com/api/v1/accounts/list",
+    "#{@host}/api/v1/accounts/list",
     headers: { "Content-Type" => "application/json", "Authorization" => "bearer 123456789009876543211"}
   )
 
@@ -150,6 +186,10 @@ def main
       password: data[1]["pwd"],
       groups: data[1]["groups"].map{ |i| i["group_url"] }
     }
+  end
+  if datas.count.zero?
+    @log.info "#{Time.now.to_i} No data runed"
+    return
   end
 
   datas.each_with_index do |data, i|
