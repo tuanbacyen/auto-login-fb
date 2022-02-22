@@ -32,7 +32,8 @@ Chromedriver.set_version "97.0.4692.71"
 @log.level = Logger::INFO
 
 # @host = "https://fb-crawl-order.herokuapp.com"
-@host = "http://localhost:3000"
+# @host = "http://localhost:3000"
+@host = "http://103.98.148.95"
 @new_crawl = false
 
 
