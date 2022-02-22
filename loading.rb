@@ -72,6 +72,7 @@ def start driver, account, pwd, group_ids
       driver.navigate.refresh
       sleep 5
       if driver.current_url.include?("checkpoint")
+        File.delete("cookies/#{account.split("@").first}.json") if File.exist?("cookies/#{account.split("@").first}.json")
         sleep 2
         send_account_block(account)
         sleep 2
