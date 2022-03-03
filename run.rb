@@ -20,8 +20,8 @@ Chromedriver.set_version "97.0.4692.71"
 @options.add_argument("--window-size=1920,1200")
 @options.add_argument("--start-maximized")
 @options.add_argument("--headless")
-@options.add_argument('--disable-blink-features=AutomationControlled')
 @options.add_argument("--blink-settings=imagesEnabled=false")
+@options.add_argument('--disable-blink-features=AutomationControlled')
 @options.add_argument("--disable-dev-shm-usage")
 @options.add_argument("--disable-gpu")
 @options.add_argument("disable-infobars")
@@ -58,7 +58,7 @@ def start driver, account, pwd, group_ids
   sleep 5
 
   urls = group_ids.map do |group_id|
-    "https://m.facebook.com/groups/#{group_id}?sorting_setting=CHRONOLOGICAL"
+    "https://facebook.com/groups/#{group_id}?sorting_setting=CHRONOLOGICAL"
   end
 
   open_chrome_tab(driver, urls)
@@ -87,6 +87,7 @@ rescue => e
   @log.error e
 ensure
   @log.info "close chromedriver"
+  driver.save_screenshot("image_logs/dead_#{Time.now.to_i}.jpg")
   driver.quit
   if @new_crawl
     @log.info "close chromedriver"
@@ -111,16 +112,29 @@ def open_chrome_tab driver, urls
 end
 
 def crawl_data driver, group_id, account
-  list_story = driver.find_elements(:class, "story_body_container").first(10)
+  driver.execute_script("window.scrollTo(0, document.body.scrollHeight)")
+  sleep 3
+  driver.execute_script("window.scrollTo(0, document.body.scrollHeight)")
+  sleep 3
+
+  list_story = driver.find_elements(:xpath, '//div[@role="feed"]/div').first(10)[1..-1]
   posts = list_story.map do |story|
-    text = story.find_elements(:tag_name, "p")
-    text = story.find_elements(:tag_name, "span") if text.empty?
-    if !/09|03|07|08|05/.match(text.last.text).nil?
-      fb_user_post_id = story.find_element(:tag_name, "header").find_elements(:tag_name, "div").map{|i| i.attribute("data-sigil")}.compact.select{|i| i&.include?("feed_story_ring")}.first.gsub!("feed_story_ring", "")
-      post_id = story.find_elements(:tag_name, "a").select{|i| i.attribute('href')&.include?("permalink")}.first.attribute('href').split("/")[6]
+    # text = story.find_elements(:xpath, './/div/div/div/div/div/div/div/div/div/div/div[2]/div/div[1]')[3].text
+    text = story.text
+    if !/09|03|07|08|05/.match(text).nil?
+      text = text[text.index("\n  ·\n")...text.index("\nThích\n")]&.gsub("\n  ·\n", "")&.gsub("Bình luận", "")&.gsub("Chia sẻ", "")&.gsub(/[0-9] bình luận/, "")&.gsub("Đang hoạt động", "")&.gsub("nViết bình luận công khai…", "")
+      driver.action.move_to(story.find_elements(:tag_name, "a")[3]).perform
+      sleep 0.5
+      link_user = story.find_elements(:tag_name, "a").select{|i| i.attribute("href").include?("user/")}.first.attribute("href")
+      fb_user_post_id = link_user[link_user.index('user/')+5...link_user.index('/?')]
+      link_post = story.find_elements(:tag_name, "a").select{|i| i.attribute("href").include?("posts")}.count
+      link_post = story.find_elements(:tag_name, "a").select{|i| i.attribute("href").include?("posts/")}.first.attribute("href")
+      post_id = link_post[link_post.index('posts/')+6...link_post.index('/?')]
+      username = story.find_element(:tag_name, 'h2').text
+
       {
         username: story.find_element(:tag_name, "strong").text,
-        content: text.last.text,
+        content: text,
         post_id: "#{group_id}/#{post_id}",
         fb_user_post_id: fb_user_post_id
       }
@@ -130,6 +144,7 @@ def crawl_data driver, group_id, account
   end.compact
   @log.info posts.to_s
 
+  driver.save_screenshot("image_logs/#{account.split("@").first}_#{group_id}.jpg") if posts.empty?
   post_data(posts, group_id, account)
 end
 
@@ -176,6 +191,9 @@ end
 
 def main
   sleep 5
+  # driver = Selenium::WebDriver.for :chrome, options: @options
+  # start(driver, "danchoidaosip6@gmail.com", "Tt29042010@", ["220028958474708"])
+  # return
   x = HTTParty.get(
     "#{@host}/api/v1/accounts/list",
     headers: { "Content-Type" => "application/json", "Authorization" => "bearer 123456789009876543211"}
@@ -195,10 +213,16 @@ def main
   end
 
   datas.each_with_index do |data, i|
-    Process.fork do
-      @log.info "open chromedriver with account #{data[:username]}"
-      driver = Selenium::WebDriver.for :chrome, options: @options
-      start(driver, data[:username], data[:password], data[:groups])
+    username = data[:username]
+    password = data[:password]
+    groups = data[:groups]
+    groups.each_slice(8) do |groupss|
+      sleep 10
+      Process.fork do
+        @log.info "open chromedriver with account #{username} groups: #{groupss.join(", ")}"
+        driver = Selenium::WebDriver.for :chrome, options: @options
+        start(driver, username, password, groupss)
+      end
     end
   end
 end
